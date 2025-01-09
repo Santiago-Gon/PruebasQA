@@ -45,40 +45,55 @@ class InlazeLoginTests(unittest.TestCase):
         logging.info("Tiempo de ejecución del login: %.2f segundos", elapsed_time)
 
     def test_incomplete_login_form(self):
-        """Valida que el formulario no se envíe si los campos no están completos."""
+        """Valida que el formulario no se envíe si los campos no están completos, incluyendo botón no clickeable."""
         logging.info("Iniciando la prueba: test_incomplete_login_form")
         url = "https://test-qa.inlaze.com/auth/sign-in"
         self.driver.get(url)
         logging.info(f"Accediendo a la URL: {url}")
 
-        try:
-            # Solo enviar email y presionar el botón
-            username_field = self.driver.find_element(By.ID, "email")
-            username_field.send_keys("CorreoPrueba@prueba.com")
-            logging.info("Solo excribir email, realizado correctamente.")
+        # Configuración de los elementos del formulario
+        email_field = self.driver.find_element(By.ID, "email")
+        password_field = self.driver.find_element(By.CSS_SELECTOR, "input.input.input-bordered.join-item.w-full")
+        login_button = self.driver.find_element(By.XPATH, "/html/body/app-root/app-sign-in/main/section[1]/app-sign-in-form/form/button")
 
-            login_button = self.driver.find_element(By.XPATH, "/html/body/app-root/app-sign-in/main/section[1]/app-sign-in-form/form/button")
-            logging.info("Botón de inicio de sesión localizado exitosamente.")
-            
+        # Lista de pruebas con diferentes configuraciones de entrada
+        test_cases = [
+            {"email": "CorreoPrueba@prueba.com", "password": "", "description": "Solo email ingresado"},
+            {"email": "", "password": "PasswordPrueba123", "description": "Solo contraseña ingresada"}
+        ]
 
-            login_button.click()
-            logging.info("Se intentó hacer clic en el botón de inicio de sesión con campos incompletos.")
-            
-            time.sleep(2)  # Esperar un momento para confirmar
-            
-            # Verificar que la URL no haya cambiado
-            self.assertEqual(self.driver.current_url, url, "El formulario se envió aunque los campos no estaban completos.")
-            logging.info("El formulario no se envió. La prueba fue exitosa.")        
-              
-        except WebDriverException as e:
-            if "is not clickable at point" in str(e):
-                logging.warning("El botón de inicio de sesión no es clickeable. Prueba exitosa.")
-                self.assertTrue(True, "El botón de inicio de sesión no es clickeable, prueba exitosa.")
-            else:
-                logging.error(f"Excepción inesperada: {str(e)}")
-                raise
+        for case in test_cases:
+            # Limpiar los campos antes de cada intento
+            email_field.clear()
+            password_field.clear()
+
+            # Ingresar los datos de prueba
+            if case["email"]:
+                email_field.send_keys(case["email"])
+            if case["password"]:
+                password_field.send_keys(case["password"])
+
+            try:
+                # Intentar iniciar sesión
+                logging.info(f"Probando caso: {case['description']}")
+                login_button.click()
+                time.sleep(2)  # Esperar para observar el resultado
+
+                # Verificar que la URL no haya cambiado
+                self.assertEqual(self.driver.current_url, url, f"El formulario se envió con campos incompletos: {case['description']}")
+                logging.info(f"El formulario no se envió con configuración: {case['description']}")
+
+            except WebDriverException as e:
+                # Manejar el caso cuando el botón no es clickeable
+                if "is not clickable at point" in str(e):
+                    logging.warning(f"El botón de inicio de sesión no es clickeable en el caso: {case['description']}")
+                    self.assertTrue(True, f"El botón no es clickeable, prueba exitosa para el caso: {case['description']}")
+                else:
+                    logging.error(f"Excepción inesperada: {str(e)}")
+                    raise
 
         logging.info("Prueba completada: test_incomplete_login_form")
+
 
     def test_login_form_elements(self):
         """Verifica que los elementos del formulario de inicio de sesión estén presentes."""
